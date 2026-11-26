@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { supabase } from '../lib/supabase'
+import { erroreDalLink, messaggioAccesso, supabase } from '../lib/supabase'
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(erroreDalLink)
   const [busy, setBusy] = useState(false)
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | null>(null)
@@ -15,7 +15,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: window.location.origin } })
     setBusy(false)
     if (!error) { setSent(true); return }
-    setError(/load failed|failed to fetch|network/i.test(error.message) ? 'Non riesco a collegarmi: controlla la connessione.' : error.message)
+    setError(messaggioAccesso(error))
   }
 
   async function verifyCode(e: FormEvent) {
@@ -23,7 +23,7 @@ export default function Login() {
     setBusy(true); setCodeError(null)
     const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.replace(/\D/g, ''), type: 'email' })
     setBusy(false)
-    if (error) setCodeError('Codice non valido o scaduto. Controlla l\'ultima email ricevuta.')
+    if (error) setCodeError(messaggioAccesso(error))
   }
 
   return (
@@ -42,7 +42,7 @@ export default function Login() {
               className="otp" value={code} onChange={(e) => setCode(e.target.value)} />
             <button className="btn primary wide" disabled={busy || code.replace(/\D/g, '').length < 6}>Entra</button>
             {codeError && <p className="error" role="alert">{codeError}</p>}
-            <button type="button" className="link" onClick={() => { setSent(false); setCode('') }}>Cambia indirizzo</button>
+            <button type="button" className="link" onClick={() => { setSent(false); setCode('') }}>Cambia indirizzo o chiedi un'altra email</button>
           </form>
         ) : (
           <form onSubmit={sendLink} className="stack">
@@ -50,6 +50,8 @@ export default function Login() {
             <input id="login-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             <button className="btn primary wide" disabled={busy}>Mandami il link per entrare</button>
             {error && <p className="error" role="alert">{error}</p>}
+            <p className="muted small">Se hai aggiunto l'app alla schermata Home, apri il link dell'email da Safari e poi riapri l'app: oppure, se l'email contiene un codice di 6 cifre, scrivilo direttamente nell'app.</p>
+            <button type="button" className="link" onClick={() => { if (email.trim()) setSent(true); else setError('Scrivi prima la tua email.') }}>Ho già un codice dall'email</button>
           </form>
         )}
       </div>

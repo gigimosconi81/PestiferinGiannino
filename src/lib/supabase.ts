@@ -7,6 +7,29 @@ const key = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim
 
 export const isConfigured = Boolean(url && key)
 
+// Errore arrivato dal link dell'email (link scaduto, già usato…): lo leggiamo prima che la libreria pulisca l'indirizzo
+function leggiErroreDalLink(): string | null {
+  if (typeof window === 'undefined') return null
+  const p = new URLSearchParams(window.location.hash.replace(/^#/, '') + '&' + window.location.search.replace(/^\?/, ''))
+  const codice = p.get('error_code') ?? p.get('error')
+  if (!codice) return null
+  const descr = p.get('error_description')?.replace(/\+/g, ' ') ?? ''
+  if (codice === 'otp_expired' || /expired|invalid/i.test(descr)) return 'Il link dell\'email è scaduto o è già stato usato. Chiedine uno nuovo qui sotto e toccalo una volta sola.'
+  return `Il link dell'email non ha funzionato (${codice}${descr ? ': ' + descr : ''}). Chiedine uno nuovo.`
+}
+export const erroreDalLink = leggiErroreDalLink()
+
+// Messaggi d'accesso in italiano, con il dettaglio tecnico per capire cosa succede
+export function messaggioAccesso(error: { message: string; status?: number; code?: string }): string {
+  const tecnico = ` (dettaglio: ${error.code ?? error.status ?? ''} ${error.message})`
+  if (error.code === 'over_email_send_rate_limit' || error.status === 429 || /rate limit/i.test(error.message)) {
+    return 'Sono state chieste troppe email in poco tempo: il servizio ne manda al massimo 2 all\'ora. Aspetta circa un\'ora e riprova una volta sola. Se hai già un\'email recente, usa quella.' + tecnico
+  }
+  if (error.code === 'otp_expired' || /expired|invalid/i.test(error.message)) return 'Codice o link scaduto, oppure già usato. Chiedine uno nuovo.' + tecnico
+  if (/load failed|failed to fetch|network/i.test(error.message)) return 'Non riesco a collegarmi: controlla la connessione.' + tecnico
+  return 'Accesso non riuscito.' + tecnico
+}
+
 export const supabase = createClient(url ?? 'http://localhost', key ?? 'missing', {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
 })
