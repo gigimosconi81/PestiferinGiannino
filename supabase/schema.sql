@@ -26,6 +26,8 @@ $$;
 
 revoke all on function public.is_member() from public;
 revoke all on function public.is_admin() from public;
+revoke execute on function public.is_member() from anon;
+revoke execute on function public.is_admin() from anon;
 grant execute on function public.is_member() to authenticated;
 grant execute on function public.is_admin() to authenticated;
 
@@ -86,7 +88,7 @@ create table if not exists public.esempi_pulizia (
   creato    timestamptz not null default now()
 );
 
-create or replace function public.tocca_aggiornato() returns trigger language plpgsql as $$
+create or replace function public.tocca_aggiornato() returns trigger language plpgsql set search_path = public as $$
 begin new.aggiornato := now(); return new; end $$;
 drop trigger if exists storie_aggiornato on public.storie;
 create trigger storie_aggiornato before update on public.storie for each row execute function public.tocca_aggiornato();
