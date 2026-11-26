@@ -25,6 +25,9 @@ export function messaggioAccesso(error: { message: string; status?: number; code
   if (error.code === 'over_email_send_rate_limit' || error.status === 429 || /rate limit/i.test(error.message)) {
     return 'Sono state chieste troppe email in poco tempo: il servizio ne manda al massimo 2 all\'ora. Aspetta circa un\'ora e riprova una volta sola. Se hai già un\'email recente, usa quella.' + tecnico
   }
+  if (error.status === 500 && /sending/i.test(error.message)) {
+    return 'Il servizio non è riuscito a spedire l\'email: c\'è un problema nelle impostazioni email di Supabase (SMTP). Avvisa chi gestisce l\'app.' + tecnico
+  }
   if (error.code === 'otp_expired' || /expired|invalid/i.test(error.message)) return 'Codice o link scaduto, oppure già usato. Chiedine uno nuovo.' + tecnico
   if (/load failed|failed to fetch|network/i.test(error.message)) return 'Non riesco a collegarmi: controlla la connessione.' + tecnico
   return 'Accesso non riuscito.' + tecnico
