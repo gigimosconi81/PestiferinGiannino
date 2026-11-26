@@ -7,6 +7,7 @@ export default function Impostazioni({ session }: { session: Session }) {
   const [membri, setMembri] = useState<Membro[]>([])
   const [admin, setAdmin] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
+  const [avviso, setAvviso] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [nomeMembro, setNomeMembro] = useState('')
 
@@ -27,7 +28,7 @@ export default function Impostazioni({ session }: { session: Session }) {
     if (!em) return
     const { error } = await supabase.from('membri').insert({ email: em, nome: nomeMembro.trim() || null })
     if (error) { setErrore(error.code === '23505' ? 'Questo indirizzo c\'è già.' : error.message); return }
-    setEmail(''); setNomeMembro(''); void carica()
+    setEmail(''); setNomeMembro(''); setAvviso(`${em} può entrare. Ora mandagli l'invito con il tasto «Invia invito».`); void carica()
   }
   const togliMembro = async (m: Membro) => {
     if (m.email === session.user.email?.toLowerCase()) return
@@ -40,6 +41,7 @@ export default function Impostazioni({ session }: { session: Session }) {
     <div className="stack gap-lg">
       <h1>Famiglia</h1>
       {errore && <p className="error" role="alert">{errore}</p>}
+      {avviso && <p className="notice" role="status">{avviso}</p>}
 
       <section className="panel stack">
         <h2>Personaggi</h2>
@@ -52,7 +54,12 @@ export default function Impostazioni({ session }: { session: Session }) {
           {membri.map((m) => (
             <li key={m.email} className="row between wrap gap-sm">
               <span><b>{m.nome || m.email}</b>{m.nome && <span className="muted small"> · {m.email}</span>}{m.ruolo === 'admin' && <span className="badge">gestisce</span>}</span>
-              {admin && m.email !== session.user.email?.toLowerCase() && <button className="btn small ghost danger" onClick={() => void togliMembro(m)}>Togli</button>}
+              {admin && m.email !== session.user.email?.toLowerCase() && (
+                <span className="row gap-sm wrap">
+                  <InvitoButton email={m.email} nome={m.nome} />
+                  <button className="btn small ghost danger" onClick={() => void togliMembro(m)}>Togli</button>
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -70,5 +77,26 @@ export default function Impostazioni({ session }: { session: Session }) {
         <button className="btn" onClick={() => supabase.auth.signOut()}>Esci</button>
       </section>
     </div>
+  )
+}
+
+// Come in VacationPlans: un messaggio pronto da mandare su WhatsApp o con il menu Condividi del telefono
+function InvitoButton({ email, nome }: { email: string; nome: string | null }) {
+  const [copiato, setCopiato] = useState(false)
+  const testo = `Ciao${nome ? ' ' + nome : ''}! Ti ho aggiunto a "Le storie di Pestiferin", l'app per trasformare in libro le storie di Pestiferin Giannino. ` +
+    `Apri ${window.location.origin} dal telefono, scrivi questa email: ${email}, premi "Mandami il link per entrare" e tocca il link che ti arriva per email. ` +
+    `Poi puoi aggiungerla alla schermata Home come un'app.`
+  const condividi = async () => {
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Le storie di Pestiferin', text: testo }) } catch { /* annullato */ }
+      return
+    }
+    try { await navigator.clipboard.writeText(testo); setCopiato(true); setTimeout(() => setCopiato(false), 2000) } catch { /* ignora */ }
+  }
+  return (
+    <>
+      <button className="btn small" onClick={() => void condividi()}>{copiato ? 'Testo copiato' : 'Invia invito'}</button>
+      <a className="btn small ghost" href={`https://wa.me/?text=${encodeURIComponent(testo)}`} target="_blank" rel="noreferrer">WhatsApp</a>
+    </>
   )
 }
