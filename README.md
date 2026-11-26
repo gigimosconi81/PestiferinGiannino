@@ -2,7 +2,9 @@
 
 Web app da installare sul telefono per trasformare in libro le storie di Pestiferin Giannino che Agata racconta a Riccardo.
 
-**Fase 1 (questa versione):** registrare, trascrivere, ripulire con Claude, rivedere.
+**Fase 1 (questa versione):** il quaderno dei personaggi, registrare, trascrivere, ripulire con Claude, rivedere.
+
+0. **Quaderno**: schede dei personaggi (aspetto, carattere, modo di parlare, immagini di riferimento), luoghi, elenco delle storie che si ricordano e stile dei disegni. Ogni campo si salva da solo.
 
 1. **Registra**: si preme il tasto rosso e si racconta. Funziona anche senza internet: l'audio si salva nel telefono ogni 5 secondi, quindi se l'app si chiude o la batteria finisce non si perde niente. I racconti lunghi vengono divisi in parti da 20 minuti senza interrompere la registrazione.
 2. **Trascrive**: appena c'è rete la registrazione viene caricata e trasformata in testo. I nomi dei personaggi elencati nella pagina *Famiglia* aiutano a scriverli giusti.
@@ -15,7 +17,7 @@ Prossime fasi: schede dei personaggi e disegni, impaginazione, PDF per Amazon KD
 
 Servono quattro account: **Supabase** (database e archivio audio), **Vercel** (pubblicazione), **Claude API** (pulizia del testo, console.anthropic.com) e **OpenAI** (trascrizione, platform.openai.com).
 
-1. **Database**: crea un nuovo progetto Supabase. In *SQL Editor → New query* incolla tutto `supabase/schema.sql` e premi *Run*. Poi togli il `--` dall'ultima riga, metti il tuo indirizzo email (minuscolo) e rilancia solo quella riga: diventi l'amministratore. Gli altri membri della famiglia li aggiungi poi dall'app, nella pagina *Famiglia*.
+1. **Database**: crea un nuovo progetto Supabase. In *SQL Editor → New query* incolla tutto `supabase/schema.sql` e premi *Run*, poi fai lo stesso con `supabase/002_quaderno.sql`. Poi togli il `--` dall'ultima riga, metti il tuo indirizzo email (minuscolo) e rilancia solo quella riga: diventi l'amministratore. Gli altri membri della famiglia li aggiungi poi dall'app, nella pagina *Famiglia*.
 2. **Accessi**: in Supabase, *Authentication → URL Configuration*: in *Site URL* metti l'indirizzo Vercel dell'app e aggiungilo anche in *Redirect URLs*.
 3. **Funzioni del server**: con la [Supabase CLI](https://supabase.com/docs/guides/cli), dalla cartella del progetto:
 

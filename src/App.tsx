@@ -9,6 +9,7 @@ import Login from './pages/Login'
 import Libreria from './pages/Libreria'
 import StoriaPage from './pages/Storia'
 import Impostazioni from './pages/Impostazioni'
+import Quaderno, { SchedaPage } from './pages/Quaderno'
 import Shell from './components/Shell'
 
 export default function App() {
@@ -69,6 +70,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Libreria />} />
         <Route path="/storia/:id" element={<StoriaPage />} />
+        <Route path="/quaderno" element={<Quaderno />} />
+        <Route path="/quaderno/personaggio/:id" element={<SchedaPage key="p" tabella="personaggi" />} />
+        <Route path="/quaderno/luogo/:id" element={<SchedaPage key="l" tabella="luoghi" />} />
         <Route path="/impostazioni" element={<Impostazioni session={session} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

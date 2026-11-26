@@ -11,6 +11,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         </Link>
         <nav className="topnav" aria-label="Menu">
           <NavLink to="/" end>Storie</NavLink>
+          <NavLink to="/quaderno">Quaderno</NavLink>
           <NavLink to="/impostazioni">Famiglia</NavLink>
         </nav>
       </header>
