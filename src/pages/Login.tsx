@@ -36,7 +36,7 @@ export default function Login() {
         <p className="muted">Registra le storie di Pestiferin Giannino e trasformale in un libro.</p>
         {sent ? (
           <form onSubmit={verifyCode} className="stack">
-            <p className="notice" role="status">Ti ho mandato un'email a {email}. Tocca il link, oppure scrivi qui il codice che trovi nel messaggio.</p>
+            <p className="notice" role="status">Ti ho mandato un'email a {email}. Aprila sul telefono dove usi l'app e tocca il link. Se nel messaggio c'è anche un codice di 6 cifre, puoi scriverlo qui.</p>
             <label htmlFor="login-code">Codice</label>
             <input id="login-code" inputMode="numeric" autoComplete="one-time-code" maxLength={10} placeholder="123456"
               className="otp" value={code} onChange={(e) => setCode(e.target.value)} />

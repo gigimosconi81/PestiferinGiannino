@@ -55,6 +55,12 @@ export function useRegistratore(storiaId: string, onParteSalvata: () => void) {
     parte.current = p
     partiAttive.add(id)
     await iniziaParte({ id, storiaId, mime: formato.current || 'audio/webm', parte: p.numero, iniziata: new Date().toISOString() })
+    // nel frattempo si è premuto Fine: niente nuova parte
+    if (!stream.current || fermando.current) {
+      partiAttive.delete(id)
+      await chiudiParte(id, 0)
+      return
+    }
     const r = new MediaRecorder(stream.current, { ...(formato.current ? { mimeType: formato.current } : {}), audioBitsPerSecond: 48000 })
     if (!formato.current) formato.current = r.mimeType
     r.ondataavailable = (e) => {

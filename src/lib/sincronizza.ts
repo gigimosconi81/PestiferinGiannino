@@ -10,6 +10,7 @@ const avvisa = () => ascoltatori.forEach((fn) => fn())
 
 export let ultimoErrore: string | null = null
 let inCorso: Promise<void> | null = null
+const senzaRete = () => navigator.onLine === false
 
 export function estensione(mime: string): string {
   if (mime.includes('webm')) return 'webm'
@@ -33,7 +34,11 @@ async function caricaUna(a: InAttesa): Promise<void> {
     dimensione: a.blob.size,
     registrata_il: a.registrataIl
   }, { onConflict: 'id', ignoreDuplicates: true })
-  if (ins.error) throw new Error(ins.error.message)
+  if (ins.error) {
+    throw new Error(ins.error.code === '23503'
+      ? 'la storia di questa registrazione non esiste più'
+      : ins.error.message)
+  }
   await supabase.from('storie').update({ stato: 'registrata' }).eq('id', a.storiaId).eq('stato', 'da_raccontare')
   await togliDaAttesa(a.id)
   avvisa()
@@ -45,12 +50,15 @@ export function sincronizza(): Promise<void> {
   if (inCorso) return inCorso
   inCorso = (async () => {
     try {
-      if (navigator.onLine === false) return
+      if (senzaRete()) return
       const { data } = await supabase.auth.getSession()
       if (!data.session) return
+      ultimoErrore = null
       for (const a of await elencoAttesa()) {
-        try { await caricaUna(a); ultimoErrore = null }
-        catch (e) { ultimoErrore = e instanceof Error ? e.message : String(e); break }
+        if (senzaRete()) break
+        // un errore su una registrazione non blocca le altre: si riprova al giro successivo
+        try { await caricaUna(a) }
+        catch (e) { ultimoErrore = e instanceof Error ? e.message : String(e) }
       }
     } finally {
       inCorso = null

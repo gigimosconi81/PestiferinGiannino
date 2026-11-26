@@ -12,6 +12,7 @@ export interface ParteInCorso {
   mime: string
   parte: number
   iniziata: string // ISO
+  aggiornata?: number // ultimo pezzo salvato (ms)
 }
 
 export interface InAttesa {
@@ -59,9 +60,18 @@ export async function iniziaParte(p: ParteInCorso): Promise<void> {
 }
 
 export async function salvaPezzo(parteId: string, seq: number, blob: Blob): Promise<void> {
-  const tx = (await db()).transaction('pezzi', 'readwrite')
+  const tx = (await db()).transaction(['pezzi', 'parti'], 'readwrite')
   tx.objectStore('pezzi').put({ parteId, seq, blob } satisfies Pezzo)
+  // segno che questa parte è viva: un'altra finestra dell'app non deve recuperarla
+  const parti = tx.objectStore('parti')
+  const req = parti.get(parteId)
+  req.onsuccess = () => { if (req.result) parti.put({ ...req.result, aggiornata: Date.now() }) }
   await fine(tx)
+}
+
+// Tolte dal telefono le registrazioni non ancora caricate di una storia eliminata
+export async function togliAttesaDiStoria(storiaId: string): Promise<void> {
+  for (const a of await elencoAttesa(storiaId)) await togliDaAttesa(a.id)
 }
 
 async function pezziDi(parteId: string): Promise<Pezzo[]> {
@@ -96,6 +106,9 @@ export async function recuperaPartiInterrotte(attive: Set<string>): Promise<numb
   let n = 0
   for (const p of parti) {
     if (attive.has(p.id)) continue
+    // salvata da meno di 30 secondi: la sta registrando un'altra finestra dell'app
+    const ultima = p.aggiornata ?? Date.parse(p.iniziata)
+    if (Date.now() - ultima < 30_000) continue
     const pezzi = await pezziDi(p.id)
     const durata = pezzi.length * 5 // ogni pezzo sono circa 5 secondi
     if (await chiudiParte(p.id, durata, true)) n++

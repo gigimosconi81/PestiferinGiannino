@@ -51,6 +51,7 @@ export interface Registrazione {
   trascrizione: string | null
   errore: string | null
   registrata_il: string | null
+  aggiornato: string
 }
 
 export interface Personaggio {
@@ -87,6 +88,11 @@ export async function avviaFunzione(nome: 'trascrivi' | 'ripulisci', body: Recor
     }
   } catch { /* risposta non leggibile */ }
   return /fetch|network|load failed/i.test(error.message) ? 'Senza connessione: riprova quando c\'è rete' : error.message
+}
+
+// Lavoro del server fermo da troppo tempo: probabilmente interrotto, si può rilanciare
+export function bloccato(aggiornato: string | null | undefined, minuti = 5): boolean {
+  return Boolean(aggiornato) && Date.now() - Date.parse(aggiornato as string) > minuti * 60_000
 }
 
 export function testoFinale(blocchi: Blocco[]): string {

@@ -21,9 +21,13 @@ Deno.serve(async (req) => {
   if (!id) return risposta({ errore: 'Manca registrazione_id' }, 400)
   if (!Deno.env.get('OPENAI_API_KEY')) return risposta({ errore: 'Trascrizione non ancora configurata: manca la chiave del servizio' }, 503)
 
-  const { data: reg, error } = await db.from('registrazioni').select('id, storia_id, storage_path, mime, stato').eq('id', id).maybeSingle()
+  const { data: reg, error } = await db.from('registrazioni').select('id, storia_id, storage_path, mime, stato, aggiornato').eq('id', id).maybeSingle()
   if (error) return risposta({ errore: error.message }, 500)
   if (!reg) return risposta({ errore: 'Registrazione non trovata' }, 404)
+  // già partita da meno di 5 minuti (per esempio in automatico dopo il caricamento): non la paghiamo due volte
+  if (reg.stato === 'in_trascrizione' && Date.now() - Date.parse(reg.aggiornato) < 5 * 60_000) {
+    return risposta({ errore: 'La trascrizione di questa parte è già in corso' }, 409)
+  }
 
   await db.from('registrazioni').update({ stato: 'in_trascrizione', errore: null }).eq('id', id)
   inBackground(trascrivi(db, reg))

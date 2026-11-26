@@ -74,7 +74,8 @@ create table if not exists public.registrazioni (
   errore        text,
   registrata_il timestamptz,
   creato_da     uuid default auth.uid() references auth.users on delete set null,
-  creato        timestamptz not null default now()
+  creato        timestamptz not null default now(),
+  aggiornato    timestamptz not null default now()
 );
 create index if not exists registrazioni_storia on public.registrazioni (storia_id, registrata_il, parte);
 
@@ -92,6 +93,8 @@ create or replace function public.tocca_aggiornato() returns trigger language pl
 begin new.aggiornato := now(); return new; end $$;
 drop trigger if exists storie_aggiornato on public.storie;
 create trigger storie_aggiornato before update on public.storie for each row execute function public.tocca_aggiornato();
+drop trigger if exists registrazioni_aggiornato on public.registrazioni;
+create trigger registrazioni_aggiornato before update on public.registrazioni for each row execute function public.tocca_aggiornato();
 
 -- ---------------------------------------------------------------------------
 -- Permessi: solo i membri della famiglia vedono e modificano
@@ -128,6 +131,10 @@ create policy audio_leggi on storage.objects for select to authenticated
   using (bucket_id = 'audio' and public.is_member());
 drop policy if exists audio_carica on storage.objects;
 create policy audio_carica on storage.objects for insert to authenticated
+  with check (bucket_id = 'audio' and public.is_member());
+drop policy if exists audio_aggiorna on storage.objects;
+create policy audio_aggiorna on storage.objects for update to authenticated
+  using (bucket_id = 'audio' and public.is_member())
   with check (bucket_id = 'audio' and public.is_member());
 drop policy if exists audio_cancella on storage.objects;
 create policy audio_cancella on storage.objects for delete to authenticated

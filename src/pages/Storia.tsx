@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { avviaFunzione, ETICHETTA_STATO, supabase, testoFinale, type Blocco, type Registrazione, type Storia } from '../lib/supabase'
-import { elencoAttesa, type InAttesa } from '../lib/archivio'
+import { avviaFunzione, bloccato, ETICHETTA_STATO, supabase, testoFinale, type Blocco, type Registrazione, type Storia } from '../lib/supabase'
+import { elencoAttesa, togliAttesaDiStoria, type InAttesa } from '../lib/archivio'
 import { suCambio, sincronizza } from '../lib/sincronizza'
 import Registratore from '../components/Registratore'
 import Revisione from '../components/Revisione'
@@ -61,7 +61,7 @@ export default function StoriaPage() {
 
   const ripulisci = async () => {
     if (!storia) return
-    if (storia.blocchi?.length && !window.confirm('La revisione attuale verrà sostituita da una nuova pulizia. Continuare?')) return
+    if (storia.blocchi?.length && storia.stato !== 'in_pulizia' && !window.confirm('La revisione attuale verrà sostituita da una nuova pulizia. Continuare?')) return
     setAvviso(null)
     setStoria({ ...storia, stato: 'in_pulizia', pulizia_errore: null })
     const e = await avviaFunzione('ripulisci', { storia_id: storia.id })
@@ -82,11 +82,14 @@ export default function StoriaPage() {
     if (paths.length) await supabase.storage.from('audio').remove(paths)
     const { error } = await supabase.from('storie').delete().eq('id', storia.id)
     if (error) { setAvviso(error.message); return }
+    await togliAttesaDiStoria(storia.id).catch(() => {})
     nav('/')
   }
 
   const trascritte = regs.filter((r) => r.stato === 'trascritta')
   const inTrascrizione = regs.some((r) => r.stato === 'in_trascrizione' || r.stato === 'caricata')
+  const conErrore = regs.some((r) => r.stato === 'errore')
+  const puliziaFerma = storia?.stato === 'in_pulizia' && bloccato(storia.aggiornato)
   const finale = storia?.blocchi ? testoFinale(storia.blocchi) : ''
 
   // Il registratore resta sempre nello stesso punto della pagina: se la storia si ricarica
@@ -144,12 +147,14 @@ export default function StoriaPage() {
         <section className="panel stack">
           <div className="row between wrap gap-sm">
             <h2>Trascrizione</h2>
-            <button className="btn primary" onClick={ripulisci} disabled={storia.stato === 'in_pulizia' || inTrascrizione}>
-              {storia.stato === 'in_pulizia' ? 'Claude la sta ripulendo…' : storia.blocchi?.length ? 'Ripulisci di nuovo' : 'Ripulisci la storia'}
+            <button className="btn primary" onClick={ripulisci} disabled={(storia.stato === 'in_pulizia' && !puliziaFerma) || inTrascrizione || conErrore}>
+              {puliziaFerma ? 'Riprova la pulizia' : storia.stato === 'in_pulizia' ? 'Claude la sta ripulendo…' : storia.blocchi?.length ? 'Ripulisci di nuovo' : 'Ripulisci la storia'}
             </button>
           </div>
           {inTrascrizione && <p className="muted small">Aspetta che tutte le parti siano trascritte prima di ripulire.</p>}
-          {storia.stato === 'in_pulizia' && <p className="muted small">Ci vuole circa un minuto. Puoi chiudere la pagina: il lavoro continua.</p>}
+          {conErrore && <p className="muted small">Una parte non è stata trascritta: riprova la sua trascrizione o eliminala, poi ripulisci.</p>}
+          {storia.stato === 'in_pulizia' && !puliziaFerma && <p className="muted small">Ci vuole circa un minuto. Puoi chiudere la pagina: il lavoro continua.</p>}
+          {puliziaFerma && <p className="error small">La pulizia sembra essersi interrotta. Puoi riprovare.</p>}
           {storia.pulizia_errore && <p className="error" role="alert">La pulizia non è riuscita: {storia.pulizia_errore}</p>}
           <details>
             <summary>Leggi la trascrizione completa</summary>
@@ -204,7 +209,9 @@ function RigaRegistrazione({ r, onTrascrivi, onTogli }: { r: Registrazione; onTr
       {r.stato === 'errore' && r.errore && <p className="error small">{r.errore}</p>}
       <div className="row gap-sm wrap">
         {url ? <audio controls src={url} preload="none" /> : <button className="btn small" onClick={ascolta}>Ascolta</button>}
-        {(r.stato === 'errore' || r.stato === 'caricata') && <button className="btn small" onClick={onTrascrivi}>Trascrivi</button>}
+        {(r.stato === 'errore' || r.stato === 'caricata' || (r.stato === 'in_trascrizione' && bloccato(r.aggiornato))) && (
+          <button className="btn small" onClick={onTrascrivi}>{r.stato === 'in_trascrizione' ? 'Riprova la trascrizione' : 'Trascrivi'}</button>
+        )}
         {r.stato === 'trascritta' && <button className="btn small ghost" onClick={onTrascrivi}>Trascrivi di nuovo</button>}
         <button className="btn small ghost danger" onClick={onTogli}>Elimina</button>
       </div>
